@@ -96,6 +96,12 @@ class Krea2DepthControl:
         samples = latent["samples"]
         h, w = samples.shape[-2] * 8, samples.shape[-1] * 8
         img = depth[..., :3].movedim(-1, 1)
+        # Centre-cropped to the render's shape first, so a map made for another shape isn't stretched.
+        ih, iw = img.shape[-2:]
+        if abs(iw / ih - w / h) > 0.01:
+            cw, ch = (round(ih * w / h), ih) if iw / ih > w / h else (iw, round(iw * h / w))
+            top, left = (ih - ch) // 2, (iw - cw) // 2
+            img = img[..., top:top + ch, left:left + cw]
         img = F.interpolate(img, size=(h, w), mode="bilinear", align_corners=False)
         img = img.mean(dim=1, keepdim=True).repeat(1, 3, 1, 1).movedim(1, -1).clamp(0, 1)
         encoded = vae.encode(img)
